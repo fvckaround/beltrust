@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import Card from "@/models/Card";
 import Account from "@/models/Account";
-import { sendEmail, cardEmail } from "@/lib/resend";
+import { sendEmail, cardEmail, sendAdminAlert, adminAlertEmail } from "@/lib/resend";
 
 function generateCardNumber(network) {
   let num = network === "mastercard" ? "5" : "4";
@@ -109,6 +109,17 @@ export async function POST(request) {
       action: "requested",
       cardType: type,
       last4: card.cardNumberLast4,
+    }),
+  });
+
+  await sendAdminAlert({
+    subject: "Card request",
+    html: adminAlertEmail({
+      type: "Card request",
+      customerName: `${session.user.firstName} ${session.user.lastName}`,
+      customerEmail: session.user.email,
+      details: `${cardNetwork} ${type} card`,
+      link: "https://beltrustbank.com/admin/cards",
     }),
   });
 

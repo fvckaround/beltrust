@@ -6,7 +6,7 @@ import Account from "@/models/Account";
 import Transaction from "@/models/Transaction";
 import Transfer from "@/models/Transfer";
 import { generateTransactionReference } from "@/lib/utils";
-import { sendEmail, transferReviewedEmail } from "@/lib/resend";
+import { sendEmail, sendAdminAlert, transferReviewedEmail, adminAlertEmail } from "@/lib/resend";
 
 export async function GET() {
   const session = await auth();
@@ -35,7 +35,7 @@ export async function POST(request) {
   const body = await request.json();
   const {
     sourceAccountId,
-    transferType, // "internal" (own accounts) | "beltrust" | "external_bank"
+    transferType,
     destinationAccountId,
     destinationAccountNumber,
     destinationBankName,
@@ -70,7 +70,6 @@ export async function POST(request) {
 
   await connectDB();
 
-  // Own-account transfers (Checking <-> Savings, same customer) complete instantly — no approval needed
   if (transferType === "internal") {
     const dbSession = await mongoose.startSession();
 
@@ -187,7 +186,6 @@ export async function POST(request) {
     }
   }
 
-  // Beltrust (other customer) and external bank transfers go through admin review
   const dbSession = await mongoose.startSession();
 
   try {
@@ -269,6 +267,21 @@ export async function POST(request) {
       );
 
       result = { transfer: transfer[0], newBalance: sourceAccount.balance };
+    });
+
+    const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(numericAmount);
+
+    await sendAdminAlert({
+      subject: "Transfer request",
+      html: adminAlertEmail({
+        type: "Transfer",
+        customerName: `${session.user.firstName} ${session.user.lastName}`,
+        customerEmail: session.user.email,
+        details: `${currency} — ${
+          transferType === "external_bank" ? `to ${destinationBankName} (external bank)` : "to another Beltrust account"
+        }`,
+        link: "https://beltrustbank.com/admin/transfers",
+      }),
     });
 
     return NextResponse.json(

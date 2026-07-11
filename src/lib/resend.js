@@ -3,6 +3,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "Beltrust Bank <beltrusts@beltrustbank.com>";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "beltrusts@outlook.com";
 
 function wrapper(title, bodyHtml) {
   return `
@@ -30,6 +31,10 @@ export async function sendEmail({ to, subject, html }) {
   } catch (error) {
     console.error("Email send failed:", error);
   }
+}
+
+export async function sendAdminAlert({ subject, html }) {
+  await sendEmail({ to: ADMIN_EMAIL, subject: `[Admin] ${subject}`, html });
 }
 
 export function welcomeEmail({ firstName }) {
@@ -61,9 +66,18 @@ export function otpEmail({ firstName, code }) {
   );
 }
 
-export function transferReviewedEmail({ firstName, amount, status, reason }) {
+export function transferReviewedEmail({ firstName, amount, status, reason, isReceiver }) {
   const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
   const approved = status === "approved";
+
+  if (isReceiver) {
+    return wrapper(
+      "You've received a transfer",
+      `<p style="font-size:14px; color:#374151; line-height:1.6;">
+        Hi ${firstName}, you've received a transfer of <strong>${currency}</strong>. It's now available in your account.
+      </p>`
+    );
+  }
 
   return wrapper(
     approved ? "Your transfer was approved" : "Your transfer was declined",
@@ -243,5 +257,18 @@ export function userStatusEmail({ firstName, action, reason }) {
     <p style="font-size:14px; color:#374151; line-height:1.6;">
       If you believe this is a mistake, please contact support.
     </p>`
+  );
+}
+
+export function adminAlertEmail({ type, customerName, customerEmail, details, link }) {
+  return wrapper(
+    `New ${type} needs your review`,
+    `<p style="font-size:14px; color:#374151; line-height:1.6;">
+      <strong>${customerName}</strong> (${customerEmail}) has submitted a ${type.toLowerCase()} that needs approval.
+    </p>
+    <p style="font-size:14px; color:#374151; line-height:1.6; background:#FAFAF9; padding:12px 16px; border-radius:8px;">
+      ${details}
+    </p>
+    ${link ? `<p style="font-size:14px; margin-top:16px;"><a href="${link}" style="color:#14213D; font-weight:600;">Review in admin panel →</a></p>` : ""}`
   );
 }

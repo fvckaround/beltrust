@@ -122,6 +122,29 @@ export async function PATCH(request, { params }) {
       });
     }
 
+    // Notify the receiving customer for approved Beltrust-to-Beltrust transfers
+    if (result.transfer.status === "approved" && result.transfer.transferType === "beltrust") {
+      const destinationAccount = result.transfer.destinationAccountId
+        ? await Account.findById(result.transfer.destinationAccountId)
+        : await Account.findOne({ accountNumber: result.transfer.destinationAccountNumber });
+
+      if (destinationAccount) {
+        const receivingUser = await User.findById(destinationAccount.user);
+        if (receivingUser && transferUser && receivingUser._id.toString() !== transferUser._id.toString()) {
+          await sendEmail({
+            to: receivingUser.email,
+            subject: "You've received a transfer",
+            html: transferReviewedEmail({
+              firstName: receivingUser.firstName,
+              amount: result.transfer.amount,
+              status: "approved",
+              isReceiver: true,
+            }),
+          });
+        }
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     console.error("Transfer review error:", error.message);

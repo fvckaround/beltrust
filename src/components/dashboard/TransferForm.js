@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import Input from "@/components/ui/Input";
@@ -19,8 +19,34 @@ export default function TransferForm({ accounts, onSuccess }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [recipientPreview, setRecipientPreview] = useState(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   const otherAccounts = accounts.filter((a) => a._id !== sourceAccountId);
+
+  useEffect(() => {
+    if (transferType !== "beltrust" || destinationAccountNumber.length < 10) {
+      setRecipientPreview(null);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setLookupLoading(true);
+      try {
+        const res = await fetch(`/api/accounts/lookup?accountNumber=${destinationAccountNumber}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRecipientPreview(data);
+        } else {
+          setRecipientPreview(null);
+        }
+      } finally {
+        setLookupLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [destinationAccountNumber, transferType]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -59,6 +85,7 @@ export default function TransferForm({ accounts, onSuccess }) {
     setDestinationBankName("");
     setDestinationRoutingNumber("");
     setRecipientName("");
+    setRecipientPreview(null);
     onSuccess?.();
   }
 
@@ -130,13 +157,27 @@ export default function TransferForm({ accounts, onSuccess }) {
       )}
 
       {transferType === "beltrust" && (
-        <Input
-          label="Recipient account number"
-          value={destinationAccountNumber}
-          onChange={(e) => setDestinationAccountNumber(e.target.value)}
-          placeholder="10-digit Beltrust account number"
-          required
-        />
+        <div>
+          <Input
+            label="Recipient account number"
+            value={destinationAccountNumber}
+            onChange={(e) => setDestinationAccountNumber(e.target.value)}
+            placeholder="10-digit Beltrust account number"
+            required
+          />
+          {lookupLoading && (
+            <p className="mt-1.5 text-xs text-muted">Looking up account...</p>
+          )}
+          {!lookupLoading && recipientPreview && (
+            <p className="mt-1.5 text-xs text-emerald flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {recipientPreview.name} — {recipientPreview.accountType} account
+            </p>
+          )}
+          {!lookupLoading && destinationAccountNumber.length >= 10 && !recipientPreview && (
+            <p className="mt-1.5 text-xs text-red-500">No matching account found</p>
+          )}
+        </div>
       )}
 
       {transferType === "external_bank" && (

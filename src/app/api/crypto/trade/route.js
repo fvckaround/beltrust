@@ -7,7 +7,7 @@ import CryptoWallet from "@/models/CryptoWallet";
 import CryptoOrder from "@/models/CryptoOrder";
 import Transaction from "@/models/Transaction";
 import { generateTransactionReference } from "@/lib/utils";
-import { sendEmail, cryptoOrderEmail } from "@/lib/resend";
+import { sendEmail, cryptoOrderEmail, sendAdminAlert, adminAlertEmail } from "@/lib/resend";
 
 export async function POST(request) {
   const session = await auth();
@@ -127,6 +127,19 @@ export async function POST(request) {
         symbol,
         quantity: numericQuantity,
         total,
+      }),
+    });
+
+    const orderCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(total);
+
+    await sendAdminAlert({
+      subject: "Crypto order",
+      html: adminAlertEmail({
+        type: "Crypto order",
+        customerName: `${session.user.firstName} ${session.user.lastName}`,
+        customerEmail: session.user.email,
+        details: `${action} ${numericQuantity} ${symbol} — ${orderCurrency}`,
+        link: "https://beltrustbank.com/admin/crypto",
       }),
     });
 
