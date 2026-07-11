@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = "Beltrust Bank <onboarding@resend.dev>";
+const FROM = "Beltrust Bank <beltrusts@beltrustbank.com>";
 
 function wrapper(title, bodyHtml) {
   return `
