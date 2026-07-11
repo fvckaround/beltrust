@@ -88,7 +88,7 @@ export default function TransferForm({ accounts, onSuccess }) {
             transferType === "internal" ? "bg-navy text-background" : "text-muted hover:text-ink"
           }`}
         >
-          My accounts
+          My accounts (instant)
         </button>
         <button
           type="button"
@@ -202,10 +202,14 @@ export default function TransferForm({ accounts, onSuccess }) {
         <motion.p
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 text-sm text-amber bg-amber-light border border-amber/20 rounded-xl px-4 py-2.5"
+          className={`flex items-center gap-2 text-sm rounded-xl px-4 py-2.5 border ${
+            transferType === "internal"
+              ? "text-emerald bg-emerald-light border-emerald/20"
+              : "text-amber bg-amber-light border-amber/20"
+          }`}
         >
           <CheckCircle2 className="w-4 h-4" />
-          Transfer submitted — pending approval
+          {transferType === "internal" ? "Transfer completed instantly" : "Transfer submitted — pending approval"}
         </motion.p>
       )}
 

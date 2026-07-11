@@ -6,6 +6,7 @@ import Account from "@/models/Account";
 import Transaction from "@/models/Transaction";
 import Transfer from "@/models/Transfer";
 import { generateTransactionReference } from "@/lib/utils";
+import { sendEmail, transferReviewedEmail } from "@/lib/resend";
 
 export async function GET() {
   const session = await auth();
@@ -34,7 +35,7 @@ export async function POST(request) {
   const body = await request.json();
   const {
     sourceAccountId,
-    transferType, // "internal" | "beltrust" | "external_bank"
+    transferType, // "internal" (own accounts) | "beltrust" | "external_bank"
     destinationAccountId,
     destinationAccountNumber,
     destinationBankName,
@@ -69,6 +70,124 @@ export async function POST(request) {
 
   await connectDB();
 
+  // Own-account transfers (Checking <-> Savings, same customer) complete instantly — no approval needed
+  if (transferType === "internal") {
+    const dbSession = await mongoose.startSession();
+
+    try {
+      let result;
+
+      await dbSession.withTransaction(async () => {
+        const sourceAccount = await Account.findOne({ _id: sourceAccountId, user: session.user.id }).session(dbSession);
+
+        if (!sourceAccount) {
+          throw new Error("Source account not found");
+        }
+
+        if (sourceAccount.status !== "active") {
+          throw new Error("This account is not active");
+        }
+
+        if (sourceAccount.balance < numericAmount) {
+          throw new Error("Insufficient funds");
+        }
+
+        const destinationAccount = await Account.findOne({ _id: destinationAccountId, user: session.user.id }).session(dbSession);
+
+        if (!destinationAccount) {
+          throw new Error("Destination account not found");
+        }
+
+        if (destinationAccount._id.toString() === sourceAccount._id.toString()) {
+          throw new Error("Choose a different destination account");
+        }
+
+        if (destinationAccount.status !== "active") {
+          throw new Error("Destination account is not active");
+        }
+
+        sourceAccount.balance -= numericAmount;
+        await sourceAccount.save({ session: dbSession });
+
+        destinationAccount.balance += numericAmount;
+        await destinationAccount.save({ session: dbSession });
+
+        const reference = generateTransactionReference();
+
+        await Transaction.create(
+          [
+            {
+              account: sourceAccount._id,
+              user: session.user.id,
+              type: "transfer_out",
+              amount: numericAmount,
+              balanceAfter: sourceAccount.balance,
+              description: description || `Transfer to •••• ${destinationAccount.accountNumber.slice(-4)}`,
+              counterpartyAccountNumber: destinationAccount.accountNumber,
+              status: "completed",
+              reference,
+            },
+          ],
+          { session: dbSession }
+        );
+
+        await Transaction.create(
+          [
+            {
+              account: destinationAccount._id,
+              user: destinationAccount.user,
+              type: "transfer_in",
+              amount: numericAmount,
+              balanceAfter: destinationAccount.balance,
+              description: description || `Transfer from •••• ${sourceAccount.accountNumber.slice(-4)}`,
+              counterpartyAccountNumber: sourceAccount.accountNumber,
+              status: "completed",
+              reference: `${reference}-IN`,
+            },
+          ],
+          { session: dbSession }
+        );
+
+        const transfer = await Transfer.create(
+          [
+            {
+              user: session.user.id,
+              sourceAccount: sourceAccount._id,
+              transferType: "internal",
+              destinationAccountId: destinationAccount._id,
+              recipientName: "Own account",
+              amount: numericAmount,
+              description,
+              status: "approved",
+              reference,
+            },
+          ],
+          { session: dbSession }
+        );
+
+        result = { transfer: transfer[0], newBalance: sourceAccount.balance };
+      });
+
+      await sendEmail({
+        to: session.user.email,
+        subject: "Transfer completed",
+        html: transferReviewedEmail({
+          firstName: session.user.firstName,
+          amount: numericAmount,
+          status: "approved",
+        }),
+      });
+
+      return NextResponse.json({ message: "Transfer completed", ...result }, { status: 201 });
+    } catch (error) {
+      console.error("Internal transfer error:", error.message);
+      return NextResponse.json({ error: error.message || "Transfer failed" }, { status: 400 });
+    } finally {
+      await dbSession.endSession();
+    }
+  }
+
+  // Beltrust (other customer) and external bank transfers go through admin review
   const dbSession = await mongoose.startSession();
 
   try {
@@ -90,17 +209,6 @@ export async function POST(request) {
       }
 
       let destinationAccount = null;
-      let recipientLabel = recipientName || "";
-
-      if (transferType === "internal") {
-        destinationAccount = await Account.findOne({ _id: destinationAccountId, user: session.user.id }).session(dbSession);
-        if (!destinationAccount) {
-          throw new Error("Destination account not found");
-        }
-        if (destinationAccount._id.toString() === sourceAccount._id.toString()) {
-          throw new Error("Choose a different destination account");
-        }
-      }
 
       if (transferType === "beltrust") {
         destinationAccount = await Account.findOne({ accountNumber: destinationAccountNumber }).session(dbSession);
@@ -112,7 +220,6 @@ export async function POST(request) {
         }
       }
 
-      // Place hold — debit the source account immediately, funds released or refunded on admin review
       sourceAccount.balance -= numericAmount;
       await sourceAccount.save({ session: dbSession });
 
@@ -131,7 +238,7 @@ export async function POST(request) {
               (transferType === "external_bank"
                 ? `Transfer to ${destinationBankName} — ${recipientName}`
                 : `Transfer to •••• ${destinationAccount.accountNumber.slice(-4)}`),
-            counterpartyName: recipientLabel || undefined,
+            counterpartyName: recipientName || undefined,
             counterpartyAccountNumber: destinationAccount?.accountNumber || destinationAccountNumber,
             status: "pending",
             reference,
@@ -146,12 +253,11 @@ export async function POST(request) {
             user: session.user.id,
             sourceAccount: sourceAccount._id,
             transferType,
-            destinationAccountId: transferType === "internal" ? destinationAccount._id : undefined,
-            destinationAccountNumber:
-              transferType !== "internal" ? destinationAccount?.accountNumber || destinationAccountNumber : undefined,
+            destinationAccountId: undefined,
+            destinationAccountNumber: destinationAccount?.accountNumber || destinationAccountNumber,
             destinationBankName: transferType === "external_bank" ? destinationBankName : undefined,
             destinationRoutingNumber: transferType === "external_bank" ? destinationRoutingNumber : undefined,
-            recipientName: recipientLabel || undefined,
+            recipientName: recipientName || undefined,
             amount: numericAmount,
             description,
             status: "pending",

@@ -47,8 +47,8 @@ export default function TransfersPage() {
       <div className="mb-8">
         <h1 className="font-display font-bold text-2xl text-ink">Transfers</h1>
         <p className="mt-1 text-sm text-muted">
-          Move money between accounts, to other Beltrust customers, or to another bank.
-          All transfers are reviewed before completing.
+          Transfers between your own accounts complete instantly. Transfers to other
+          Beltrust customers or another bank are reviewed before completing.
         </p>
       </div>
 
