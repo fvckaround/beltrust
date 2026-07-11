@@ -9,6 +9,7 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
   const [form, setForm] = useState({
     accountId: accounts[0]?._id || "",
     type: "virtual",
+    network: "visa",
     spendingLimit: "",
     purpose: "",
   });
@@ -37,6 +38,7 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
       body: JSON.stringify({
         accountId: form.accountId,
         type: form.type,
+        network: form.network,
         spendingLimit: form.spendingLimit || null,
         purpose: form.purpose,
       }),
@@ -85,6 +87,24 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
                 Physical cards ship to your address on file and activate on arrival.
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">Card network</label>
+            <div className="flex gap-2 p-1 rounded-xl bg-background border border-border w-fit">
+              {["visa", "mastercard"].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setForm({ ...form, network: n })}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold capitalize transition-colors ${
+                    form.network === n ? "bg-navy text-background" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>

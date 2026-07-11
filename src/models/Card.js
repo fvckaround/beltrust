@@ -5,6 +5,7 @@ const CardSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     account: { type: mongoose.Schema.Types.ObjectId, ref: "Account", required: true },
     type: { type: String, enum: ["virtual", "physical"], required: true },
+    network: { type: String, enum: ["visa", "mastercard"], default: "visa" },
     cardNumber: { type: String, required: true },
     cardNumberLast4: { type: String, required: true },
     cvv: { type: String, required: true },

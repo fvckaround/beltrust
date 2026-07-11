@@ -109,7 +109,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
               <span className="font-display font-bold text-background text-sm tracking-tight">
                 Beltrust
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={handleReveal}
                   disabled={revealing || pending}
@@ -145,6 +145,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
                     {String(card.expiryMonth).padStart(2, "0")}/{String(card.expiryYear).slice(-2)}
                   </p>
                 </div>
+                <NetworkMark network={card.network} />
               </div>
             </div>
 
@@ -182,9 +183,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
             </div>
 
             <div className="absolute bottom-4 right-6">
-              <span className="font-display font-bold text-background/40 text-xs tracking-tight">
-                Beltrust
-              </span>
+              <NetworkMark network={card.network} muted />
             </div>
           </div>
         </motion.div>
@@ -252,5 +251,31 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
         )}
       </div>
     </motion.div>
+  );
+}
+
+function NetworkMark({ network, muted = false }) {
+  if (network === "mastercard") {
+    return (
+      <div className="flex items-center" aria-label="Mastercard">
+        <div className={`w-6 h-6 rounded-full ${muted ? "bg-red-500/40" : "bg-red-500/90"}`} />
+        <div
+          className={`w-6 h-6 rounded-full -ml-3 mix-blend-screen ${
+            muted ? "bg-amber-400/40" : "bg-amber-400/90"
+          }`}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <span
+      className={`font-display italic font-extrabold text-lg tracking-tight ${
+        muted ? "text-background/30" : "text-background"
+      }`}
+      aria-label="Visa"
+    >
+      VISA
+    </span>
   );
 }

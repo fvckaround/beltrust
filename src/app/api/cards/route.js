@@ -5,8 +5,9 @@ import Card from "@/models/Card";
 import Account from "@/models/Account";
 import { sendEmail, cardEmail } from "@/lib/resend";
 
-function generateCardNumber() {
-  let num = "4";
+function generateCardNumber(network) {
+  // Visa numbers start with 4, Mastercard with 5 — matches real-world prefix conventions
+  let num = network === "mastercard" ? "5" : "4";
   for (let i = 0; i < 15; i++) num += Math.floor(Math.random() * 10);
   return num;
 }
@@ -40,7 +41,7 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const { accountId, type, spendingLimit, purpose } = body;
+  const { accountId, type, network, spendingLimit, purpose } = body;
 
   if (!accountId || !type) {
     return NextResponse.json({ error: "Account and card type are required" }, { status: 400 });
@@ -49,6 +50,8 @@ export async function POST(request) {
   if (!purpose || !purpose.trim()) {
     return NextResponse.json({ error: "Please tell us what this card is for" }, { status: 400 });
   }
+
+  const cardNetwork = ["visa", "mastercard"].includes(network) ? network : "visa";
 
   await connectDB();
 
@@ -70,7 +73,7 @@ export async function POST(request) {
     );
   }
 
-  const fullNumber = generateCardNumber();
+  const fullNumber = generateCardNumber(cardNetwork);
   const now = new Date();
   const expiry = new Date(now.setFullYear(now.getFullYear() + 4));
 
@@ -78,6 +81,7 @@ export async function POST(request) {
     user: session.user.id,
     account: accountId,
     type,
+    network: cardNetwork,
     cardNumber: fullNumber,
     cardNumberLast4: fullNumber.slice(-4),
     cvv: generateCVV(),
