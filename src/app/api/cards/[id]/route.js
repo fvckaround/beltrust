@@ -23,7 +23,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
 
-  if (status && ["active", "frozen"].includes(status) && card.status !== "cancelled") {
+  if (status && ["active", "frozen"].includes(status) && ["active", "frozen"].includes(card.status)) {
     card.status = status;
   }
 

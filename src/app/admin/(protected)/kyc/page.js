@@ -145,16 +145,38 @@ export default function AdminKYCPage() {
                   </div>
                 </div>
 
-                {sub.idFrontImage && (
-                  <div className="mb-5">
-                    <p className="text-xs text-muted mb-2">ID document</p>
-                    <img
-                      src={sub.idFrontImage}
-                      alt="Submitted ID"
-                      className="max-w-xs rounded-xl border border-border"
-                    />
-                  </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                  {sub.idFrontImage && (
+                    <div>
+                      <p className="text-xs text-muted mb-2">ID front</p>
+                      <img
+                        src={sub.idFrontImage}
+                        alt="ID front"
+                        className="w-full rounded-xl border border-border"
+                      />
+                    </div>
+                  )}
+                  {sub.idBackImage && (
+                    <div>
+                      <p className="text-xs text-muted mb-2">ID back</p>
+                      <img
+                        src={sub.idBackImage}
+                        alt="ID back"
+                        className="w-full rounded-xl border border-border"
+                      />
+                    </div>
+                  )}
+                  {sub.selfieImage && (
+                    <div>
+                      <p className="text-xs text-muted mb-2">Selfie</p>
+                      <img
+                        src={sub.selfieImage}
+                        alt="Selfie"
+                        className="w-full rounded-xl border border-border"
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {sub.status === "rejected" && sub.rejectionReason && (
                   <p className="mb-4 text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">

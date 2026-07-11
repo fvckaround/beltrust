@@ -216,6 +216,8 @@ function KYCTab() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ idType: "passport", idNumber: "" });
   const [frontFile, setFrontFile] = useState(null);
+  const [backFile, setBackFile] = useState(null);
+  const [selfieFile, setSelfieFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -229,27 +231,35 @@ function KYCTab() {
     fetchKyc();
   }, []);
 
+  async function uploadFile(file) {
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: uploadForm });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed");
+    return data.url;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
     if (!frontFile) {
-      setError("Please upload a photo of your ID");
+      setError("Please upload the front of your ID");
+      return;
+    }
+
+    if (!selfieFile) {
+      setError("Please upload a selfie photo");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const uploadForm = new FormData();
-      uploadForm.append("file", frontFile);
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
-      const uploadData = await uploadRes.json();
-
-      if (!uploadRes.ok) {
-        throw new Error(uploadData.error || "Upload failed");
-      }
+      const idFrontImage = await uploadFile(frontFile);
+      const idBackImage = backFile ? await uploadFile(backFile) : undefined;
+      const selfieImage = await uploadFile(selfieFile);
 
       const res = await fetch("/api/kyc", {
         method: "POST",
@@ -257,7 +267,9 @@ function KYCTab() {
         body: JSON.stringify({
           idType: form.idType,
           idNumber: form.idNumber,
-          idFrontImage: uploadData.url,
+          idFrontImage,
+          idBackImage,
+          selfieImage,
         }),
       });
 
@@ -269,6 +281,8 @@ function KYCTab() {
 
       setKyc(data.kyc);
       setFrontFile(null);
+      setBackFile(null);
+      setSelfieFile(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -331,6 +345,31 @@ function KYCTab() {
               type="file"
               accept="image/*"
               onChange={(e) => setFrontFile(e.target.files[0])}
+              className="w-full text-sm text-muted file:mr-3 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-navy file:text-background file:text-xs file:font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">
+              Photo of ID (back) <span className="text-muted font-normal">— optional for passports</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setBackFile(e.target.files[0])}
+              className="w-full text-sm text-muted file:mr-3 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-navy file:text-background file:text-xs file:font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">Selfie photo</label>
+            <p className="text-xs text-muted mb-2">
+              A clear photo of your face, used to match against your ID.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setSelfieFile(e.target.files[0])}
               className="w-full text-sm text-muted file:mr-3 file:px-4 file:py-2 file:rounded-full file:border-0 file:bg-navy file:text-background file:text-xs file:font-semibold"
             />
           </div>

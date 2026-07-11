@@ -45,8 +45,9 @@ export default function CardsPage() {
     setCards((prev) => prev.filter((c) => c._id !== cardId));
   }
 
-  // Accounts that don't already have an active (non-cancelled) card
-  const accountIdsWithCards = new Set(cards.map((c) => c.account?._id));
+  const accountIdsWithCards = new Set(
+    cards.filter((c) => c.status !== "declined" && c.status !== "cancelled").map((c) => c.account?._id)
+  );
   const availableAccounts = accounts.filter((acc) => !accountIdsWithCards.has(acc._id));
 
   if (loading) {
@@ -63,7 +64,7 @@ export default function CardsPage() {
         <div>
           <h1 className="font-display font-bold text-2xl text-ink">Cards</h1>
           <p className="mt-1 text-sm text-muted">
-            One card per account — manage your virtual and physical cards.
+            Card requests are reviewed before becoming active.
           </p>
         </div>
         <Button onClick={() => setShowModal(true)} disabled={availableAccounts.length === 0}>
@@ -74,7 +75,7 @@ export default function CardsPage() {
 
       {availableAccounts.length === 0 && cards.length > 0 && (
         <p className="mb-6 text-xs text-muted">
-          All your accounts already have a card. Delete a card to request a new one for that account.
+          All your accounts already have a card or a pending request.
         </p>
       )}
 

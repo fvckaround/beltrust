@@ -6,7 +6,6 @@ import Account from "@/models/Account";
 import { sendEmail, cardEmail } from "@/lib/resend";
 
 function generateCardNumber(network) {
-  // Visa numbers start with 4, Mastercard with 5 — matches real-world prefix conventions
   let num = network === "mastercard" ? "5" : "4";
   for (let i = 0; i < 15; i++) num += Math.floor(Math.random() * 10);
   return num;
@@ -63,12 +62,12 @@ export async function POST(request) {
 
   const existingCardOnAccount = await Card.findOne({
     account: accountId,
-    status: { $ne: "cancelled" },
+    status: { $nin: ["cancelled", "declined"] },
   });
 
   if (existingCardOnAccount) {
     return NextResponse.json(
-      { error: "This account already has a card. Delete it first to request a new one." },
+      { error: "This account already has a card or a pending request. Delete it first to request a new one." },
       { status: 400 }
     );
   }
@@ -88,7 +87,7 @@ export async function POST(request) {
     cardholderName: `${session.user.firstName} ${session.user.lastName}`.toUpperCase(),
     expiryMonth: expiry.getMonth() + 1,
     expiryYear: expiry.getFullYear(),
-    status: type === "virtual" ? "active" : "pending_activation",
+    status: "pending_approval",
     spendingLimit: spendingLimit || null,
     purpose: purpose.trim(),
   });
@@ -97,10 +96,10 @@ export async function POST(request) {
 
   await sendEmail({
     to: session.user.email,
-    subject: "Your new card is ready",
+    subject: "Card request received",
     html: cardEmail({
       firstName: session.user.firstName,
-      action: "issued",
+      action: "requested",
       cardType: type,
       last4: card.cardNumberLast4,
     }),

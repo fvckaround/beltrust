@@ -14,12 +14,14 @@ const CardSchema = new mongoose.Schema(
     expiryYear: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["active", "frozen", "cancelled", "pending_activation"],
-      default: "pending_activation",
+      enum: ["pending_approval", "pending_activation", "active", "frozen", "cancelled", "declined"],
+      default: "pending_approval",
     },
     spendingLimit: { type: Number, default: null },
     purpose: { type: String, trim: true },
     color: { type: String, default: "navy" },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    reviewNotes: { type: String, trim: true },
   },
   { timestamps: true }
 );

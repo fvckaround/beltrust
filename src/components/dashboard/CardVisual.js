@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wifi, Snowflake, RotateCw, Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
+import { Wifi, Snowflake, RotateCw, Eye, EyeOff, Loader2, Trash2, Clock } from "lucide-react";
 
 export default function CardVisual({ card, onToggleFreeze, onDelete }) {
   const [flipped, setFlipped] = useState(false);
@@ -14,7 +14,12 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
   const [deleting, setDeleting] = useState(false);
 
   const frozen = card.status === "frozen";
-  const pending = card.status === "pending_activation";
+  const pendingApproval = card.status === "pending_approval";
+  const pendingActivation = card.status === "pending_activation";
+  const declined = card.status === "declined";
+  const canReveal = card.status === "active" || card.status === "frozen";
+  const canFreeze = card.status === "active" || card.status === "frozen";
+  const canDelete = !["active", "frozen"].includes(card.status) || true; // deletion always allowed by owner
 
   async function handleReveal(e) {
     e.stopPropagation();
@@ -78,6 +83,12 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
 
   const displayCvv = revealed && revealData?.cvv ? revealData.cvv : "•••";
 
+  const statusBadge = pendingApproval
+    ? { label: "Awaiting approval", icon: Clock }
+    : declined
+    ? { label: "Declined", icon: null }
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -97,7 +108,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
           {/* FRONT */}
           <div
             className={`absolute inset-0 rounded-2xl p-6 flex flex-col justify-between overflow-hidden [backface-visibility:hidden] transition-opacity ${
-              frozen ? "opacity-50" : ""
+              frozen || pendingApproval || declined ? "opacity-50" : ""
             }`}
             style={{
               background: "linear-gradient(135deg, #14213D 0%, #1F3358 60%, #0B1526 100%)",
@@ -112,7 +123,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleReveal}
-                  disabled={revealing || pending}
+                  disabled={revealing || !canReveal}
                   className="text-background/70 hover:text-background disabled:opacity-30 transition-colors"
                   aria-label={revealed ? "Hide card number" : "Reveal card number"}
                   type="button"
@@ -157,6 +168,15 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
                 </div>
               </div>
             )}
+
+            {statusBadge && (
+              <div className="absolute inset-0 flex items-center justify-center bg-navy-dark/40 backdrop-blur-[2px] z-20">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/90">
+                  {statusBadge.icon && <statusBadge.icon className="w-3.5 h-3.5 text-navy" />}
+                  <span className="text-xs font-semibold text-navy">{statusBadge.label}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* BACK */}
@@ -177,7 +197,7 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
               </div>
               <p className="mt-4 text-[10px] text-background/50 leading-relaxed">
                 This card is property of Beltrust Bank. If found, please
-                contact support@beltrustbank.com. Use of this card is
+                contact beltrusts@outlook.com. Use of this card is
                 subject to the cardholder agreement.
               </p>
             </div>
@@ -193,10 +213,10 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
         <div>
           <p className="text-xs font-medium text-ink capitalize">{card.type} card</p>
           <p className="text-xs text-muted capitalize">
-            {pending ? "Pending activation" : card.status}
+            {card.status.replace("_", " ")}
           </p>
         </div>
-        {!pending && (
+        {canFreeze && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -213,6 +233,10 @@ export default function CardVisual({ card, onToggleFreeze, onDelete }) {
           </button>
         )}
       </div>
+
+      {card.status === "declined" && card.reviewNotes && (
+        <p className="text-xs text-red-500 px-1">{card.reviewNotes}</p>
+      )}
 
       {revealError && <p className="text-xs text-red-500 px-1">{revealError}</p>}
 

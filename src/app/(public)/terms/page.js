@@ -76,9 +76,11 @@ export default function TermsPage() {
             <p className="text-muted">
               Debit cards issued through Beltrust are linked to a specific
               account and subject to the spending limits, if any, that you or
-              Beltrust set. You may freeze or cancel your card at any time
-              through your dashboard. Beltrust may suspend or cancel a card
-              at its discretion if fraudulent or unauthorized activity is
+              Beltrust set. All card requests are reviewed and must be
+              approved before the card becomes usable. You may freeze or
+              cancel your card at any time through your dashboard. Beltrust
+              may decline a card request or suspend/cancel an issued card at
+              its discretion if fraudulent or unauthorized activity is
               suspected.
             </p>
           </section>
@@ -98,11 +100,13 @@ export default function TermsPage() {
             <h2 className="font-display font-bold text-lg text-ink mb-3">8. Cryptocurrency Services</h2>
             <p className="text-muted">
               Cryptocurrency prices are volatile and subject to significant
-              fluctuation. Beltrust does not guarantee the value, liquidity,
-              or future performance of any digital asset made available
-              through the Services. You acknowledge that cryptocurrency
-              transactions carry inherent risk and that you are solely
-              responsible for your trading decisions.
+              fluctuation. All buy and sell orders submitted through the
+              Services are reviewed prior to completion and may be declined
+              at Beltrust's discretion. Beltrust does not guarantee the
+              value, liquidity, or future performance of any digital asset
+              made available through the Services. You acknowledge that
+              cryptocurrency transactions carry inherent risk and that you
+              are solely responsible for your trading decisions.
             </p>
           </section>
 
@@ -154,8 +158,8 @@ export default function TermsPage() {
             <h2 className="font-display font-bold text-lg text-ink mb-3">13. Contact</h2>
             <p className="text-muted">
               Questions about these Terms can be directed to{" "}
-              <a href="mailto:support@beltrustbank.com" className="text-navy hover:underline">
-                support@beltrustbank.com
+              <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
+                beltrusts@outlook.com
               </a>
               .
             </p>

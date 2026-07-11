@@ -14,7 +14,7 @@ export async function PATCH(request, { params }) {
 
   const { id } = await params;
   const body = await request.json();
-  const { action } = body;
+  const { action, reviewNotes } = body;
 
   await connectDB();
 
@@ -22,6 +22,65 @@ export async function PATCH(request, { params }) {
 
   if (!card) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
+  }
+
+  if (action === "approve") {
+    if (card.status !== "pending_approval") {
+      return NextResponse.json({ error: "This card request has already been reviewed" }, { status: 400 });
+    }
+
+    card.status = card.type === "physical" ? "pending_activation" : "active";
+    card.reviewedBy = session.user.id;
+    card.reviewNotes = reviewNotes || "";
+    await card.save();
+
+    const cardUser = await User.findById(card.user);
+    if (cardUser) {
+      await sendEmail({
+        to: cardUser.email,
+        subject: "Your card request was approved",
+        html: cardEmail({
+          firstName: cardUser.firstName,
+          action: "approved",
+          cardType: card.type,
+          last4: card.cardNumberLast4,
+        }),
+      });
+    }
+
+    return NextResponse.json({ card: excludeSensitive(card) });
+  }
+
+  if (action === "decline") {
+    if (card.status !== "pending_approval") {
+      return NextResponse.json({ error: "This card request has already been reviewed" }, { status: 400 });
+    }
+
+    if (!reviewNotes?.trim()) {
+      return NextResponse.json({ error: "A reason for declining is required" }, { status: 400 });
+    }
+
+    card.status = "declined";
+    card.reviewedBy = session.user.id;
+    card.reviewNotes = reviewNotes;
+    await card.save();
+
+    const cardUserDeclined = await User.findById(card.user);
+    if (cardUserDeclined) {
+      await sendEmail({
+        to: cardUserDeclined.email,
+        subject: "Your card request was declined",
+        html: cardEmail({
+          firstName: cardUserDeclined.firstName,
+          action: "declined",
+          cardType: card.type,
+          last4: card.cardNumberLast4,
+          reason: reviewNotes,
+        }),
+      });
+    }
+
+    return NextResponse.json({ card: excludeSensitive(card) });
   }
 
   if (action === "activate") {

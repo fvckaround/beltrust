@@ -11,6 +11,7 @@ import {
   Send,
   HandCoins,
   CreditCard,
+  Bitcoin,
   ShieldCheck,
   Settings,
   Menu,
@@ -26,6 +27,7 @@ const navItems = [
   { label: "Transfer Requests", href: "/admin/transfers", icon: Send },
   { label: "Loans", href: "/admin/loans", icon: HandCoins },
   { label: "Cards", href: "/admin/cards", icon: CreditCard },
+  { label: "Crypto Orders", href: "/admin/crypto", icon: Bitcoin },
   { label: "KYC Review", href: "/admin/kyc", icon: ShieldCheck },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
@@ -38,7 +40,6 @@ export default function AdminSidebar({ admin }) {
 
   return (
     <>
-      {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-navy-dark border-b border-background/10 flex items-center justify-between px-4">
         <Link href="/admin/dashboard" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-emerald flex items-center justify-center">
@@ -57,7 +58,6 @@ export default function AdminSidebar({ admin }) {
         </button>
       </div>
 
-      {/* Mobile overlay menu */}
       <div
         className={cn(
           "lg:hidden fixed inset-0 z-40 bg-navy-dark pt-16 transition-transform duration-300",
@@ -95,7 +95,6 @@ export default function AdminSidebar({ admin }) {
         </nav>
       </div>
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col fixed top-0 left-0 bottom-0 w-64 bg-navy-dark border-r border-background/10 z-40">
         <div className="h-16 flex items-center px-6 border-b border-background/10">
           <Link href="/admin/dashboard" className="flex items-center gap-2">

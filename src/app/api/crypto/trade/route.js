@@ -4,9 +4,10 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import Account from "@/models/Account";
 import CryptoWallet from "@/models/CryptoWallet";
+import CryptoOrder from "@/models/CryptoOrder";
 import Transaction from "@/models/Transaction";
 import { generateTransactionReference } from "@/lib/utils";
-import { sendEmail, cryptoTradeEmail } from "@/lib/resend";
+import { sendEmail, cryptoOrderEmail } from "@/lib/resend";
 
 export async function POST(request) {
   const session = await auth();
@@ -20,7 +21,7 @@ export async function POST(request) {
 
   const numericQuantity = Number(quantity);
   const numericPrice = Number(price);
-  const totalCost = numericQuantity * numericPrice;
+  const total = numericQuantity * numericPrice;
 
   if (!accountId || !action || !symbol || !numericQuantity || numericQuantity <= 0 || !numericPrice) {
     return NextResponse.json({ error: "Missing or invalid trade details" }, { status: 400 });
@@ -35,7 +36,7 @@ export async function POST(request) {
   const dbSession = await mongoose.startSession();
 
   try {
-    let result;
+    let order;
 
     await dbSession.withTransaction(async () => {
       const account = await Account.findOne({ _id: accountId, user: session.user.id }).session(dbSession);
@@ -53,28 +54,36 @@ export async function POST(request) {
         [wallet] = await CryptoWallet.create([{ user: session.user.id, holdings: [] }], { session: dbSession });
       }
 
-      const holdingIndex = wallet.holdings.findIndex((h) => h.symbol === symbol);
+      const reference = generateTransactionReference();
+      let holdTx = null;
 
       if (action === "buy") {
-        if (account.balance < totalCost) {
+        if (account.balance < total) {
           throw new Error("Insufficient funds in selected account");
         }
 
-        account.balance -= totalCost;
+        account.balance -= total;
+        await account.save({ session: dbSession });
 
-        if (holdingIndex >= 0) {
-          const existing = wallet.holdings[holdingIndex];
-          const newQuantity = existing.quantity + numericQuantity;
-          const newAvgPrice =
-            (existing.quantity * existing.averageBuyPrice + numericQuantity * numericPrice) / newQuantity;
-          existing.quantity = newQuantity;
-          existing.averageBuyPrice = newAvgPrice;
-        } else {
-          wallet.holdings.push({ symbol, name, quantity: numericQuantity, averageBuyPrice: numericPrice });
-        }
-
-        wallet.totalInvestedUSD += totalCost;
+        const created = await Transaction.create(
+          [
+            {
+              account: account._id,
+              user: session.user.id,
+              type: "withdrawal",
+              amount: total,
+              balanceAfter: account.balance,
+              description: `Pending: Buy ${numericQuantity} ${symbol}`,
+              status: "pending",
+              reference,
+            },
+          ],
+          { session: dbSession }
+        );
+        holdTx = created[0];
       } else {
+        const holdingIndex = wallet.holdings.findIndex((h) => h.symbol === symbol);
+
         if (holdingIndex < 0 || wallet.holdings[holdingIndex].quantity < numericQuantity) {
           throw new Error("Insufficient crypto balance to sell");
         }
@@ -83,50 +92,48 @@ export async function POST(request) {
         if (wallet.holdings[holdingIndex].quantity <= 0.00000001) {
           wallet.holdings.splice(holdingIndex, 1);
         }
-
-        account.balance += totalCost;
+        await wallet.save({ session: dbSession });
       }
 
-      await account.save({ session: dbSession });
-      await wallet.save({ session: dbSession });
-
-      const txType = action === "buy" ? "withdrawal" : "deposit";
-
-      await Transaction.create(
+      const created = await CryptoOrder.create(
         [
           {
-            account: account._id,
             user: session.user.id,
-            type: txType,
-            amount: totalCost,
-            balanceAfter: account.balance,
-            description: `${action === "buy" ? "Bought" : "Sold"} ${numericQuantity} ${symbol}`,
-            status: "completed",
-            reference: generateTransactionReference(),
+            account: account._id,
+            action,
+            symbol,
+            name,
+            quantity: numericQuantity,
+            price: numericPrice,
+            total,
+            status: "pending",
+            holdTransaction: holdTx?._id,
+            reference,
           },
         ],
         { session: dbSession }
       );
 
-      result = { wallet, newBalance: account.balance };
+      order = created[0];
     });
 
     await sendEmail({
       to: session.user.email,
-      subject: action === "buy" ? "Crypto purchase confirmed" : "Crypto sale confirmed",
-      html: cryptoTradeEmail({
+      subject: `Crypto ${action} request received`,
+      html: cryptoOrderEmail({
         firstName: session.user.firstName,
-        action,
+        action: "requested",
+        orderAction: action,
         symbol,
         quantity: numericQuantity,
-        total: totalCost,
+        total,
       }),
     });
 
-    return NextResponse.json({ message: "Trade completed", ...result }, { status: 201 });
+    return NextResponse.json({ message: "Order submitted and pending approval", order }, { status: 201 });
   } catch (error) {
-    console.error("Crypto trade error:", error.message);
-    return NextResponse.json({ error: error.message || "Trade failed" }, { status: 400 });
+    console.error("Crypto order error:", error.message);
+    return NextResponse.json({ error: error.message || "Order failed" }, { status: 400 });
   } finally {
     await dbSession.endSession();
   }

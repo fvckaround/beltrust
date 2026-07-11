@@ -3,7 +3,6 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "Beltrust Bank <onboarding@resend.dev>";
-// Swap to "Beltrust Bank <support@beltrustbank.com>" once the domain is verified on Resend
 
 function wrapper(title, bodyHtml) {
   return `
@@ -94,9 +93,11 @@ export function kycReviewedEmail({ firstName, status, reason }) {
   );
 }
 
-export function cardEmail({ firstName, action, cardType, last4 }) {
+export function cardEmail({ firstName, action, cardType, last4, reason }) {
   const titles = {
-    issued: "Your new card is ready",
+    requested: "Card request received",
+    approved: "Your card request was approved",
+    declined: "Your card request was declined",
     activated: "Your card has been activated",
     frozen: "Your card has been frozen",
     unfrozen: "Your card has been unfrozen",
@@ -105,7 +106,9 @@ export function cardEmail({ firstName, action, cardType, last4 }) {
   };
 
   const messages = {
-    issued: `A new ${cardType} card ending in ${last4} has been issued to your account.`,
+    requested: `Your request for a ${cardType} card has been received and is under review.`,
+    approved: `Your ${cardType} card ending in ${last4} has been approved.`,
+    declined: `Your request for a ${cardType} card has been declined.`,
     activated: `Your ${cardType} card ending in ${last4} is now active and ready to use.`,
     frozen: `Your ${cardType} card ending in ${last4} has been frozen. It cannot be used until unfrozen.`,
     unfrozen: `Your ${cardType} card ending in ${last4} has been unfrozen and is active again.`,
@@ -118,6 +121,7 @@ export function cardEmail({ firstName, action, cardType, last4 }) {
     `<p style="font-size:14px; color:#374151; line-height:1.6;">
       Hi ${firstName}, ${messages[action]}
     </p>
+    ${reason ? `<p style="font-size:14px; color:#B91C1C; background:#FEF2F2; padding:12px 16px; border-radius:8px; line-height:1.6;">${reason}</p>` : ""}
     <p style="font-size:14px; color:#374151; line-height:1.6;">
       If you didn't request this change, please contact support immediately.
     </p>`
@@ -141,15 +145,28 @@ export function billPayEmail({ firstName, action, payeeName, amount }) {
   );
 }
 
-export function cryptoTradeEmail({ firstName, action, symbol, quantity, total }) {
+export function cryptoOrderEmail({ firstName, action, orderAction, symbol, quantity, total, reason }) {
   const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(total);
+  const verb = orderAction === "buy" ? "purchase" : "sale";
+
+  const titles = {
+    requested: `Crypto ${verb} request received`,
+    approved: `Your crypto ${verb} was approved`,
+    declined: `Your crypto ${verb} was declined`,
+  };
+
+  const messages = {
+    requested: `Your request to ${orderAction} <strong>${quantity} ${symbol}</strong> for <strong>${currency}</strong> is under review.`,
+    approved: `Your ${orderAction} of <strong>${quantity} ${symbol}</strong> for <strong>${currency}</strong> has been approved and completed.`,
+    declined: `Your ${orderAction} of <strong>${quantity} ${symbol}</strong> for <strong>${currency}</strong> has been declined.`,
+  };
 
   return wrapper(
-    action === "buy" ? "Crypto purchase confirmed" : "Crypto sale confirmed",
+    titles[action],
     `<p style="font-size:14px; color:#374151; line-height:1.6;">
-      Hi ${firstName}, you ${action === "buy" ? "bought" : "sold"}
-      <strong>${quantity} ${symbol}</strong> for <strong>${currency}</strong>.
-    </p>`
+      Hi ${firstName}, ${messages[action]}
+    </p>
+    ${reason ? `<p style="font-size:14px; color:#B91C1C; background:#FEF2F2; padding:12px 16px; border-radius:8px; line-height:1.6;">${reason}</p>` : ""}`
   );
 }
 

@@ -2,20 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, CreditCard, Check, Ban } from "lucide-react";
+import { Loader2, Check, Ban, X } from "lucide-react";
+import Input from "@/components/ui/Input";
 
 const statusConfig = {
+  pending_approval: { color: "text-amber", bg: "bg-amber/10", label: "Pending approval" },
+  pending_activation: { color: "text-navy", bg: "bg-navy/10", label: "Pending activation" },
   active: { color: "text-emerald", bg: "bg-emerald/10", label: "Active" },
   frozen: { color: "text-amber", bg: "bg-amber/10", label: "Frozen" },
-  pending_activation: { color: "text-navy", bg: "bg-navy/10", label: "Pending activation" },
   cancelled: { color: "text-muted", bg: "bg-ink/5", label: "Cancelled" },
+  declined: { color: "text-red-500", bg: "bg-red-50", label: "Declined" },
 };
 
 export default function AdminCardsPage() {
   const [cards, setCards] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending_approval");
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [decliningId, setDecliningId] = useState(null);
+  const [declineReason, setDeclineReason] = useState("");
 
   async function fetchCards() {
     setLoading(true);
@@ -30,18 +35,19 @@ export default function AdminCardsPage() {
     fetchCards();
   }, [statusFilter]);
 
-  async function handleAction(cardId, action) {
+  async function handleAction(cardId, action, reviewNotes) {
     setProcessingId(cardId);
     const res = await fetch(`/api/admin/cards/${cardId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, reviewNotes }),
     });
     setProcessingId(null);
 
     if (res.ok) {
-      const data = await res.json();
-      setCards((prev) => prev.map((c) => (c._id === cardId ? { ...c, ...data.card } : c)));
+      setDecliningId(null);
+      setDeclineReason("");
+      fetchCards();
     }
   }
 
@@ -49,19 +55,19 @@ export default function AdminCardsPage() {
     <div>
       <div className="mb-8">
         <h1 className="font-display font-bold text-2xl text-ink">Cards</h1>
-        <p className="mt-1 text-sm text-muted">All cards issued across Beltrust.</p>
+        <p className="mt-1 text-sm text-muted">Review card requests and manage issued cards.</p>
       </div>
 
       <div className="flex gap-2 p-1 rounded-xl bg-surface border border-border w-fit mb-6 overflow-x-auto">
-        {["", "pending_activation", "active", "frozen", "cancelled"].map((s) => (
+        {["pending_approval", "pending_activation", "active", "frozen", "declined", "cancelled"].map((s) => (
           <button
-            key={s || "all"}
+            key={s}
             onClick={() => setStatusFilter(s)}
             className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
               statusFilter === s ? "bg-navy text-background" : "text-muted hover:text-ink"
             }`}
           >
-            {s ? statusConfig[s]?.label : "All"}
+            {statusConfig[s]?.label}
           </button>
         ))}
       </div>
@@ -75,78 +81,132 @@ export default function AdminCardsPage() {
           <p className="text-sm text-muted">No cards found.</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-surface overflow-hidden overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="px-5 py-3 font-medium text-muted">Customer</th>
-                <th className="px-5 py-3 font-medium text-muted">Card</th>
-                <th className="px-5 py-3 font-medium text-muted">Type</th>
-                <th className="px-5 py-3 font-medium text-muted">Linked account</th>
-                <th className="px-5 py-3 font-medium text-muted">Status</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cards.map((card, i) => {
-                const config = statusConfig[card.status] || statusConfig.pending_activation;
-                return (
-                  <motion.tr
-                    key={card._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="border-b border-border last:border-b-0 hover:bg-background/50 transition-colors"
-                  >
-                    <td className="px-5 py-4 whitespace-nowrap">
-                      <p className="font-medium text-ink">
-                        {card.user?.firstName} {card.user?.lastName}
-                      </p>
-                      <p className="text-xs text-muted">{card.user?.email}</p>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs text-muted whitespace-nowrap">
-                      •••• {card.cardNumberLast4}
-                    </td>
-                    <td className="px-5 py-4 text-muted capitalize whitespace-nowrap">{card.type}</td>
-                    <td className="px-5 py-4 text-muted whitespace-nowrap">
+        <div className="space-y-4">
+          {cards.map((card) => {
+            const config = statusConfig[card.status] || statusConfig.pending_approval;
+            const isDeclining = decliningId === card._id;
+
+            return (
+              <motion.div
+                key={card._id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-2xl border border-border bg-surface"
+              >
+                <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">
+                      {card.user?.firstName} {card.user?.lastName}
+                    </p>
+                    <p className="text-xs text-muted">{card.user?.email}</p>
+                  </div>
+                  <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-semibold ${config.bg} ${config.color}`}>
+                    {config.label}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-sm">
+                  <div>
+                    <p className="text-xs text-muted mb-0.5">Type</p>
+                    <p className="text-ink font-medium capitalize">{card.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted mb-0.5">Network</p>
+                    <p className="text-ink font-medium capitalize">{card.network}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted mb-0.5">Card</p>
+                    <p className="text-ink font-medium font-mono">•••• {card.cardNumberLast4}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted mb-0.5">Linked account</p>
+                    <p className="text-ink font-medium font-mono">
                       {card.account?.type} •••• {card.account?.accountNumber?.slice(-4)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.color}`}>
-                        {config.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right whitespace-nowrap">
-                      {card.status === "pending_activation" && (
+                    </p>
+                  </div>
+                </div>
+
+                {card.purpose && <p className="text-sm text-muted mb-4">"{card.purpose}"</p>}
+
+                {card.status === "declined" && card.reviewNotes && (
+                  <p className="mb-4 text-sm text-red-500">{card.reviewNotes}</p>
+                )}
+
+                {card.status === "pending_approval" && (
+                  <>
+                    {!isDeclining ? (
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => handleAction(card._id, "activate")}
+                          onClick={() => handleAction(card._id, "approve")}
                           disabled={processingId === card._id}
-                          className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald text-background hover:bg-emerald/90 transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full bg-emerald text-background hover:bg-emerald/90 transition-colors disabled:opacity-50"
                         >
-                          {processingId === card._id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Check className="w-3 h-3" />
-                          )}
-                          Mark shipped & activate
+                          {processingId === card._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Approve
                         </button>
-                      )}
-                      {["active", "frozen"].includes(card.status) && (
                         <button
-                          onClick={() => handleAction(card._id, "cancel")}
-                          disabled={processingId === card._id}
-                          className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          onClick={() => setDecliningId(card._id)}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
                         >
-                          <Ban className="w-3 h-3" />
-                          Cancel card
+                          <X className="w-3.5 h-3.5" />
+                          Decline
                         </button>
-                      )}
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </div>
+                    ) : (
+                      <div className="pt-4 border-t border-border space-y-3">
+                        <Input
+                          label="Reason for declining"
+                          value={declineReason}
+                          onChange={(e) => setDeclineReason(e.target.value)}
+                          placeholder="e.g. Account not verified, unusual request"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAction(card._id, "decline", declineReason)}
+                            disabled={processingId === card._id}
+                            className="text-xs font-semibold px-4 py-2 rounded-full bg-red-500 text-background hover:bg-red-600 transition-colors disabled:opacity-50"
+                          >
+                            {processingId === card._id ? "Declining..." : "Confirm decline"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setDecliningId(null);
+                              setDeclineReason("");
+                            }}
+                            className="text-xs font-medium text-muted hover:text-ink px-2"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {card.status === "pending_activation" && (
+                  <button
+                    onClick={() => handleAction(card._id, "activate")}
+                    disabled={processingId === card._id}
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald text-background hover:bg-emerald/90 transition-colors disabled:opacity-50"
+                  >
+                    {processingId === card._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    Mark shipped & activate
+                  </button>
+                )}
+
+                {["active", "frozen"].includes(card.status) && (
+                  <button
+                    onClick={() => handleAction(card._id, "cancel")}
+                    disabled={processingId === card._id}
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    <Ban className="w-3 h-3" />
+                    Cancel card
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>

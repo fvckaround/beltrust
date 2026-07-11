@@ -128,8 +128,8 @@ export default function ContactPage() {
         <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted">
           <Mail className="w-4 h-4" />
           Or email us directly at{" "}
-          <a href="mailto:support@beltrustbank.com" className="text-navy hover:underline">
-            support@beltrustbank.com
+          <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
+            beltrusts@outlook.com
           </a>
         </div>
       </div>

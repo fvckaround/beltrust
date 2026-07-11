@@ -2,28 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { format } from "date-fns";
 import CryptoTradeModal from "@/components/dashboard/CryptoTradeModal";
+
+const orderStatusConfig = {
+  pending: { icon: Clock, color: "text-amber", bg: "bg-amber/10", label: "Pending approval" },
+  approved: { icon: CheckCircle2, color: "text-emerald", bg: "bg-emerald/10", label: "Approved" },
+  declined: { icon: XCircle, color: "text-red-500", bg: "bg-red-50", label: "Declined" },
+};
 
 export default function CryptoPage() {
   const [prices, setPrices] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [accounts, setAccounts] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // { coin, action }
+  const [modal, setModal] = useState(null);
 
   async function fetchAll() {
-    const [pricesRes, walletRes, accountsRes] = await Promise.all([
+    const [pricesRes, walletRes, accountsRes, ordersRes] = await Promise.all([
       fetch("/api/crypto/prices"),
       fetch("/api/crypto"),
       fetch("/api/accounts"),
+      fetch("/api/crypto/orders"),
     ]);
     const pricesData = await pricesRes.json();
     const walletData = await walletRes.json();
     const accountsData = await accountsRes.json();
+    const ordersData = await ordersRes.json();
     setPrices(pricesData.prices || []);
     setWallet(walletData.wallet);
     setAccounts(accountsData.accounts || []);
+    setOrders(ordersData.orders || []);
     setLoading(false);
   }
 
@@ -55,17 +66,15 @@ export default function CryptoPage() {
       <div className="mb-8">
         <h1 className="font-display font-bold text-2xl text-ink">Crypto</h1>
         <p className="mt-1 text-sm text-muted">
-          Buy and hold major cryptocurrencies alongside your cash.
+          Buy and sell requests are reviewed before completing.
         </p>
       </div>
 
-      {/* Portfolio summary */}
       <div className="mb-8 p-6 rounded-2xl bg-navy text-background">
         <p className="text-sm text-background/70 mb-1">Portfolio value</p>
         <p className="font-mono font-bold text-3xl tracking-tight">{currency(holdingsValue)}</p>
       </div>
 
-      {/* Holdings */}
       {wallet?.holdings.length > 0 && (
         <div className="mb-10">
           <h2 className="text-sm font-semibold text-ink mb-4">Your holdings</h2>
@@ -92,7 +101,40 @@ export default function CryptoPage() {
         </div>
       )}
 
-      {/* Market list */}
+      {orders.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-sm font-semibold text-ink mb-4">Order history</h2>
+          <div className="rounded-2xl border border-border bg-surface overflow-hidden">
+            {orders.map((order) => {
+              const config = orderStatusConfig[order.status];
+              const Icon = config.icon;
+              return (
+                <div
+                  key={order._id}
+                  className="flex items-center gap-4 px-5 py-4 border-b border-border last:border-b-0"
+                >
+                  <div className={`w-9 h-9 rounded-xl ${config.bg} flex items-center justify-center shrink-0`}>
+                    <Icon className={`w-4 h-4 ${config.color}`} strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-ink capitalize">
+                      {order.action} {order.quantity} {order.symbol}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {format(new Date(order.createdAt), "MMM d, yyyy · h:mm a")}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-mono font-semibold text-sm text-ink">{currency(order.total)}</p>
+                    <p className={`text-xs mt-0.5 ${config.color}`}>{config.label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <h2 className="text-sm font-semibold text-ink mb-4">Market</h2>
       <div className="rounded-2xl border border-border bg-surface overflow-hidden">
         {prices.map((coin, i) => {

@@ -27,9 +27,9 @@ export default function PrivacyPage() {
             <h2 className="font-display font-bold text-lg text-ink mb-3">2. Information We Collect</h2>
             <p className="text-muted mb-3">We collect the following categories of information:</p>
             <ul className="list-disc list-inside space-y-2 text-muted">
-              <li><span className="text-ink font-medium">Identity information</span> — name, date of birth, government-issued ID, and identity verification documents.</li>
+              <li><span className="text-ink font-medium">Identity information</span> — name, date of birth, government-issued ID, selfie verification, and identity verification documents.</li>
               <li><span className="text-ink font-medium">Contact information</span> — email address, phone number, and mailing address.</li>
-              <li><span className="text-ink font-medium">Financial information</span> — account balances, transaction history, card details, and loan application data.</li>
+              <li><span className="text-ink font-medium">Financial information</span> — account balances, transaction history, card details, loan application data, and cryptocurrency order history.</li>
               <li><span className="text-ink font-medium">Device and usage information</span> — IP address, browser type, device identifiers, and activity logs collected automatically when you use the Services.</li>
             </ul>
           </section>
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             <p className="text-muted mb-3">We use the information we collect to:</p>
             <ul className="list-disc list-inside space-y-2 text-muted">
               <li>Open, maintain, and service your account</li>
-              <li>Process transactions, transfers, and payments</li>
+              <li>Process transactions, transfers, card requests, loans, and payments</li>
               <li>Verify your identity and comply with legal and regulatory obligations, including anti-money laundering (AML) and know-your-customer (KYC) requirements</li>
               <li>Detect, investigate, and prevent fraud and unauthorized activity</li>
               <li>Communicate with you about your account, including security alerts and service updates</li>
@@ -90,8 +90,8 @@ export default function PrivacyPage() {
               information, subject to our legal and regulatory obligations to
               retain certain financial records. To exercise these rights,
               contact us at{" "}
-              <a href="mailto:support@beltrustbank.com" className="text-navy hover:underline">
-                support@beltrustbank.com
+              <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
+                beltrusts@outlook.com
               </a>
               .
             </p>
@@ -129,8 +129,8 @@ export default function PrivacyPage() {
             <h2 className="font-display font-bold text-lg text-ink mb-3">11. Contact Us</h2>
             <p className="text-muted">
               Questions about this Privacy Policy can be directed to{" "}
-              <a href="mailto:support@beltrustbank.com" className="text-navy hover:underline">
-                support@beltrustbank.com
+              <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
+                beltrusts@outlook.com
               </a>
               .
             </p>

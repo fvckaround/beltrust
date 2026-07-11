@@ -35,6 +35,13 @@ export async function POST(request) {
     );
   }
 
+  if (!selfieImage) {
+    return NextResponse.json(
+      { error: "A selfie photo is required for identity verification" },
+      { status: 400 }
+    );
+  }
+
   await connectDB();
 
   const existing = await KYC.findOne({ user: session.user.id });

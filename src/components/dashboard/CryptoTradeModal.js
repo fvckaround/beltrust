@@ -35,7 +35,7 @@ export default function CryptoTradeModal({ coin, action, accounts, onClose, onSu
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || "Trade failed");
+      setError(data.error || "Order failed");
       return;
     }
 
@@ -49,7 +49,7 @@ export default function CryptoTradeModal({ coin, action, accounts, onClose, onSu
           <h3 className="font-display font-bold text-lg text-ink capitalize">
             {action} {coin.name}
           </h3>
-          <button onClick={onClose} className="text-muted hover:text-ink">
+          <button onClick={onClose} className="text-muted hover:text-ink" type="button">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -59,6 +59,10 @@ export default function CryptoTradeModal({ coin, action, accounts, onClose, onSu
           <span className="font-mono font-semibold text-ink">
             {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(coin.price)}
           </span>
+        </p>
+
+        <p className="text-xs text-muted mb-5 p-3 rounded-xl bg-background">
+          This order will be submitted for review and completed once approved.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,7 +106,7 @@ export default function CryptoTradeModal({ coin, action, accounts, onClose, onSu
           )}
 
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : `Confirm ${action}`}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : `Submit ${action} request`}
           </Button>
         </form>
       </div>

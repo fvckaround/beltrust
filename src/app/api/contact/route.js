@@ -14,7 +14,7 @@ export async function POST(request) {
 
     await resend.emails.send({
       from: `Beltrust Contact Form <onboarding@resend.dev>`,
-      to: process.env.CONTACT_EMAIL || "support@beltrustbank.com",
+      to: process.env.CONTACT_EMAIL || "beltrusts@outlook.com",
       replyTo: email,
       subject: `Contact form: ${subject}`,
       text: `From: ${name} (${email})\n\n${message}`,
