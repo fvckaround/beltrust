@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -14,6 +14,7 @@ import {
   Bitcoin,
   HandCoins,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import BalanceCard from "@/components/dashboard/BalanceCard";
@@ -26,8 +27,16 @@ const quickActions = [
   { label: "Trade crypto", href: "/crypto", icon: Bitcoin },
 ];
 
+async function safeFetch(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Request to ${url} failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [bills, setBills] = useState([]);
@@ -35,47 +44,57 @@ export default function DashboardPage() {
   const [wallet, setWallet] = useState(null);
   const [cryptoValue, setCryptoValue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [accountsRes, txRes, billsRes, loansRes, walletRes, pricesRes] = await Promise.all([
-          fetch("/api/accounts"),
-          fetch("/api/transactions?limit=6"),
-          fetch("/api/bill-pay"),
-          fetch("/api/loans"),
-          fetch("/api/crypto"),
-          fetch("/api/crypto/prices"),
-        ]);
+  const fetchData = useCallback(async () => {
+    setLoadError(false);
+    try {
+      const [accountsData, txData, billsData, loansData, walletData, pricesData] = await Promise.all([
+        safeFetch("/api/accounts"),
+        safeFetch("/api/transactions?limit=6"),
+        safeFetch("/api/bill-pay"),
+        safeFetch("/api/loans"),
+        safeFetch("/api/crypto"),
+        safeFetch("/api/crypto/prices"),
+      ]);
 
-        const accountsData = await accountsRes.json();
-        const txData = await txRes.json();
-        const billsData = await billsRes.json();
-        const loansData = await loansRes.json();
-        const walletData = await walletRes.json();
-        const pricesData = await pricesRes.json();
+      setAccounts(accountsData.accounts || []);
+      setTransactions(txData.transactions || []);
+      setBills((billsData.bills || []).filter((b) => b.status === "scheduled").slice(0, 3));
+      setLoans((loansData.loans || []).filter((l) => l.status === "active"));
+      setWallet(walletData.wallet);
 
-        setAccounts(accountsData.accounts || []);
-        setTransactions(txData.transactions || []);
-        setBills((billsData.bills || []).filter((b) => b.status === "scheduled").slice(0, 3));
-        setLoans((loansData.loans || []).filter((l) => l.status === "active"));
-        setWallet(walletData.wallet);
+      if (walletData.wallet?.holdings?.length > 0 && pricesData.prices) {
+        const value = walletData.wallet.holdings.reduce((sum, h) => {
+          const coin = pricesData.prices.find((p) => p.symbol === h.symbol);
+          return sum + (coin ? coin.price * h.quantity : 0);
+        }, 0);
+        setCryptoValue(value);
+      }
 
-        if (walletData.wallet?.holdings?.length > 0 && pricesData.prices) {
-          const value = walletData.wallet.holdings.reduce((sum, h) => {
-            const coin = pricesData.prices.find((p) => p.symbol === h.symbol);
-            return sum + (coin ? coin.price * h.quantity : 0);
-          }, 0);
-          setCryptoValue(value);
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
-      } finally {
+      setLoading(false);
+    } catch (err) {
+      console.error("Dashboard fetch failed:", err);
+
+      // Automatically retry a couple of times before showing an error —
+      // covers transient network hiccups and cold-start delays without
+      // ever showing a false "no accounts" state to the customer
+      if (retryCount < 2) {
+        setRetryCount((c) => c + 1);
+        setTimeout(() => fetchData(), 1000);
+      } else {
         setLoading(false);
+        setLoadError(true);
       }
     }
-    fetchData();
-  }, []);
+  }, [retryCount]);
+
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      fetchData();
+    }
+  }, [sessionStatus]);
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
@@ -90,10 +109,30 @@ export default function DashboardPage() {
   const currency = (val) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val || 0);
 
-  if (loading) {
+  if (sessionStatus === "loading" || loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 text-muted animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-8 rounded-2xl border border-border bg-surface text-center">
+        <AlertCircle className="w-6 h-6 text-amber mx-auto mb-3" />
+        <p className="text-sm text-ink font-medium mb-1">Couldn't load your dashboard</p>
+        <p className="text-sm text-muted mb-4">This might be a temporary connection issue.</p>
+        <button
+          onClick={() => {
+            setRetryCount(0);
+            setLoading(true);
+            fetchData();
+          }}
+          className="text-sm font-semibold text-navy hover:underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }
