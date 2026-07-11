@@ -268,6 +268,7 @@ function KYCTab() {
       }
 
       setKyc(data.kyc);
+      setFrontFile(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -285,6 +286,7 @@ function KYCTab() {
 
   const config = kycStatusConfig[kyc?.status || "not_started"];
   const Icon = config.icon;
+  const canResubmit = !kyc || kyc.status === "rejected" || kyc.status === "approved";
 
   return (
     <div className="max-w-lg space-y-6">
@@ -295,10 +297,13 @@ function KYCTab() {
           {kyc?.status === "rejected" && kyc.rejectionReason && (
             <p className="text-xs text-muted mt-0.5">{kyc.rejectionReason}</p>
           )}
+          {kyc?.status === "approved" && (
+            <p className="text-xs text-muted mt-0.5">You can resubmit updated documents anytime below.</p>
+          )}
         </div>
       </div>
 
-      {(!kyc || kyc.status === "rejected") && (
+      {canResubmit && (
         <form onSubmit={handleSubmit} className="p-7 rounded-2xl border border-border bg-surface space-y-4">
           <div>
             <label className="block text-sm font-medium text-ink mb-1.5">ID type</label>

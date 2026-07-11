@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import KYC from "@/models/KYC";
 import User from "@/models/User";
-import cloudinary from "@/lib/cloudinary";
 
 export async function GET() {
   const session = await auth();
@@ -39,10 +38,6 @@ export async function POST(request) {
   await connectDB();
 
   const existing = await KYC.findOne({ user: session.user.id });
-
-  if (existing && existing.status === "approved") {
-    return NextResponse.json({ error: "Your identity is already verified" }, { status: 400 });
-  }
 
   const kyc = existing
     ? Object.assign(existing, { idType, idNumber, idFrontImage, idBackImage, selfieImage, status: "pending" })

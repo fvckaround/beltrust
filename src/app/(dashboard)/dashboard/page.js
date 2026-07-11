@@ -12,7 +12,6 @@ import {
   CreditCard,
   Receipt,
   Bitcoin,
-  ShieldAlert,
   HandCoins,
   Clock,
 } from "lucide-react";
@@ -99,9 +98,6 @@ export default function DashboardPage() {
     );
   }
 
-  const kycStatus = session?.user?.kycStatus;
-  const showKycBanner = kycStatus === "not_started" || kycStatus === "pending" || kycStatus === "rejected";
-
   return (
     <div>
       <div className="mb-8">
@@ -112,27 +108,6 @@ export default function DashboardPage() {
           Here's what's happening with your money today.
         </p>
       </div>
-
-      {/* KYC banner */}
-      {showKycBanner && (
-        <Link
-          href="/settings"
-          className="mb-8 flex items-center gap-3 p-4 rounded-2xl bg-amber/10 border border-amber/20 hover:bg-amber/15 transition-colors"
-        >
-          <ShieldAlert className="w-5 h-5 text-amber shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-ink">
-              {kycStatus === "rejected" ? "Identity verification needs attention" : "Verify your identity"}
-            </p>
-            <p className="text-xs text-muted">
-              {kycStatus === "rejected"
-                ? "Your last submission was rejected. Tap to resubmit."
-                : "Complete verification to unlock full account features."}
-            </p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-muted shrink-0" />
-        </Link>
-      )}
 
       {accounts.length === 0 ? (
         <div className="p-8 rounded-2xl border border-border bg-surface text-center">
