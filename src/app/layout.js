@@ -1,6 +1,7 @@
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import SessionWrapper from "@/components/SessionWrapper";
 import InstallAppButton from "@/components/InstallAppButton";
+import StructuredData from "@/components/StructuredData";
 import "./globals.css";
 
 const inter = Inter({
@@ -43,6 +44,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.variable} ${jakarta.variable} ${mono.variable}`}>
       <body className="bg-background text-ink font-body antialiased">
+        <StructuredData />
         <SessionWrapper>{children}</SessionWrapper>
         <InstallAppButton />
       </body>

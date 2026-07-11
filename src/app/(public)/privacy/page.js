@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "Privacy Policy | Beltrust Bank",
+  description: "Learn how Beltrust Bank collects, uses, and protects your personal information.",
+};
+
 export default function PrivacyPage() {
   return (
     <div className="pt-32 pb-24">

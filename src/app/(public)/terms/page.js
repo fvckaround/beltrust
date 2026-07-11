@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "Terms of Service | Beltrust Bank",
+  description: "Read Beltrust Bank's Terms of Service governing the use of our banking platform.",
+};
+
 export default function TermsPage() {
   return (
     <div className="pt-32 pb-24">
