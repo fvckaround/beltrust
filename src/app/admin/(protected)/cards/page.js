@@ -7,7 +7,8 @@ import Input from "@/components/ui/Input";
 
 const statusConfig = {
   pending_approval: { color: "text-amber", bg: "bg-amber/10", label: "Pending approval" },
-  pending_activation: { color: "text-navy", bg: "bg-navy/10", label: "Pending activation" },
+  pending_activation: { color: "text-navy", bg: "bg-navy/10", label: "Ready to ship" },
+  shipped: { color: "text-navy", bg: "bg-navy/10", label: "Shipped" },
   active: { color: "text-emerald", bg: "bg-emerald/10", label: "Active" },
   frozen: { color: "text-amber", bg: "bg-amber/10", label: "Frozen" },
   cancelled: { color: "text-muted", bg: "bg-ink/5", label: "Cancelled" },
@@ -21,6 +22,7 @@ export default function AdminCardsPage() {
   const [processingId, setProcessingId] = useState(null);
   const [decliningId, setDecliningId] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
+  const [trackingInputs, setTrackingInputs] = useState({});
 
   async function fetchCards() {
     setLoading(true);
@@ -35,12 +37,16 @@ export default function AdminCardsPage() {
     fetchCards();
   }, [statusFilter]);
 
-  async function handleAction(cardId, action, reviewNotes) {
+  async function handleAction(cardId, action, extra) {
     setProcessingId(cardId);
+    const body = { action };
+    if (action === "decline") body.reviewNotes = extra;
+    if (action === "ship") body.trackingNumber = extra;
+
     const res = await fetch(`/api/admin/cards/${cardId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, reviewNotes }),
+      body: JSON.stringify(body),
     });
     setProcessingId(null);
 
@@ -59,7 +65,7 @@ export default function AdminCardsPage() {
       </div>
 
       <div className="flex gap-2 p-1 rounded-xl bg-surface border border-border w-fit mb-6 overflow-x-auto">
-        {["pending_approval", "pending_activation", "active", "frozen", "declined", "cancelled"].map((s) => (
+        {["pending_approval", "pending_activation", "shipped", "active", "frozen", "declined", "cancelled"].map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -184,14 +190,47 @@ export default function AdminCardsPage() {
                 )}
 
                 {card.status === "pending_activation" && (
-                  <button
-                    onClick={() => handleAction(card._id, "activate")}
-                    disabled={processingId === card._id}
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald text-background hover:bg-emerald/90 transition-colors disabled:opacity-50"
-                  >
-                    {processingId === card._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                    Mark shipped & activate
-                  </button>
+                  <div className="pt-4 border-t border-border space-y-3">
+                    {card.shippingAddress && (
+                      <div className="text-sm text-muted">
+                        <p className="text-xs text-ink font-medium mb-1">Ship to:</p>
+                        {card.shippingAddress.street}, {card.shippingAddress.city}, {card.shippingAddress.state} {card.shippingAddress.zipCode}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        value={trackingInputs[card._id] || ""}
+                        onChange={(e) => setTrackingInputs({ ...trackingInputs, [card._id]: e.target.value })}
+                        placeholder="Tracking number"
+                        className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-ink text-sm focus:outline-none focus:ring-2 focus:ring-navy/20"
+                      />
+                      <button
+                        onClick={() => handleAction(card._id, "ship", trackingInputs[card._id])}
+                        disabled={processingId === card._id || !trackingInputs[card._id]?.trim()}
+                        className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-navy text-background hover:bg-navy-light transition-colors disabled:opacity-50 whitespace-nowrap"
+                      >
+                        Mark shipped
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {card.status === "shipped" && (
+                  <div className="pt-4 border-t border-border space-y-2">
+                    {card.trackingNumber && (
+                      <p className="text-xs text-muted">
+                        Tracking: <span className="font-mono text-ink">{card.trackingNumber}</span>
+                      </p>
+                    )}
+                    <button
+                      onClick={() => handleAction(card._id, "activate")}
+                      disabled={processingId === card._id}
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald text-background hover:bg-emerald/90 transition-colors disabled:opacity-50"
+                    >
+                      {processingId === card._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      Confirm delivered & activate
+                    </button>
+                  </div>
                 )}
 
                 {["active", "frozen"].includes(card.status) && (

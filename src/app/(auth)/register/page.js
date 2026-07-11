@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [step, setStep] = useState("form"); // "form" | "otp"
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -18,14 +19,16 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleSubmit(e) {
+  async function handleSendOtp(e) {
     e.preventDefault();
     setError("");
 
@@ -36,27 +39,54 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    const res = await fetch("/api/register/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+      }),
+    });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
+      return;
+    }
+
+    setStep("otp");
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    setError("");
+
+    if (otp.length !== 6) {
+      setError("Enter the 6-digit code");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await fetch("/api/register", {
+      const res = await fetch("/api/register/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
-          password: form.password,
-        }),
+        body: JSON.stringify({ email: form.email, code: otp }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        setError(data.error || "Verification failed");
         setLoading(false);
         return;
       }
 
-      // Auto sign-in after successful registration
       const signInResult = await signIn("credentials", {
         email: form.email,
         password: form.password,
@@ -78,6 +108,100 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleResend() {
+    setResending(true);
+    setError("");
+
+    const res = await fetch("/api/register/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+      }),
+    });
+
+    setResending(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Failed to resend code");
+    }
+  }
+
+  if (step === "otp") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        <div className="mb-8 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-navy/10 flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck className="w-6 h-6 text-navy" />
+          </div>
+          <h1 className="font-display font-extrabold text-2xl tracking-tight text-ink">
+            Check your email
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            We sent a 6-digit code to <span className="font-medium text-ink">{form.email}</span>
+          </p>
+        </div>
+
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            required
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            placeholder="000000"
+            className="w-full text-center text-3xl font-mono tracking-[0.5em] px-4 py-4 rounded-xl border border-border bg-surface text-ink focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy/40"
+          />
+
+          {error && (
+            <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+              {error}
+            </p>
+          )}
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify & create account"
+            )}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="text-sm font-medium text-navy hover:underline disabled:opacity-50"
+          >
+            {resending ? "Sending..." : "Resend code"}
+          </button>
+          <p>
+            <button
+              onClick={() => setStep("form")}
+              className="text-sm text-muted hover:text-ink"
+            >
+              ← Back to edit details
+            </button>
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -94,7 +218,7 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSendOtp} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="First name"
@@ -149,10 +273,10 @@ export default function RegisterPage() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Creating account...
+              Sending code...
             </>
           ) : (
-            "Create account"
+            "Continue"
           )}
         </Button>
       </form>

@@ -40,7 +40,7 @@ export async function POST(request) {
   }
 
   const body = await request.json();
-  const { accountId, type, network, spendingLimit, purpose } = body;
+  const { accountId, type, network, spendingLimit, purpose, shippingAddress } = body;
 
   if (!accountId || !type) {
     return NextResponse.json({ error: "Account and card type are required" }, { status: 400 });
@@ -48,6 +48,12 @@ export async function POST(request) {
 
   if (!purpose || !purpose.trim()) {
     return NextResponse.json({ error: "Please tell us what this card is for" }, { status: 400 });
+  }
+
+  if (type === "physical") {
+    if (!shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.state || !shippingAddress?.zipCode) {
+      return NextResponse.json({ error: "A complete shipping address is required for physical cards" }, { status: 400 });
+    }
   }
 
   const cardNetwork = ["visa", "mastercard"].includes(network) ? network : "visa";
@@ -90,6 +96,7 @@ export async function POST(request) {
     status: "pending_approval",
     spendingLimit: spendingLimit || null,
     purpose: purpose.trim(),
+    shippingAddress: type === "physical" ? shippingAddress : undefined,
   });
 
   const { cardNumber, cvv, ...safeCard } = card.toObject();

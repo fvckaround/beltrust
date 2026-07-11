@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -12,9 +12,35 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
     network: "visa",
     spendingLimit: "",
     purpose: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "US",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Prefill shipping address from profile if available
+    async function fetchProfile() {
+      const res = await fetch("/api/settings/profile");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.address) {
+          setForm((f) => ({
+            ...f,
+            street: data.user.address.street || "",
+            city: data.user.address.city || "",
+            state: data.user.address.state || "",
+            zipCode: data.user.address.zipCode || "",
+            country: data.user.address.country || "US",
+          }));
+        }
+      }
+    }
+    fetchProfile();
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -30,6 +56,11 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
       return;
     }
 
+    if (form.type === "physical" && (!form.street.trim() || !form.city.trim() || !form.state.trim() || !form.zipCode.trim())) {
+      setError("A complete shipping address is required for physical cards");
+      return;
+    }
+
     setLoading(true);
 
     const res = await fetch("/api/cards", {
@@ -41,6 +72,16 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
         network: form.network,
         spendingLimit: form.spendingLimit || null,
         purpose: form.purpose,
+        shippingAddress:
+          form.type === "physical"
+            ? {
+                street: form.street,
+                city: form.city,
+                state: form.state,
+                zipCode: form.zipCode,
+                country: form.country,
+              }
+            : undefined,
       }),
     });
 
@@ -56,8 +97,8 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 my-8">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-display font-bold text-lg text-ink">Request a new card</h3>
           <button onClick={onClose} className="text-muted hover:text-ink" type="button">
@@ -84,7 +125,7 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
             </div>
             {form.type === "physical" && (
               <p className="mt-1.5 text-xs text-muted">
-                Physical cards ship to your address on file and activate on arrival.
+                Physical cards ship to the address below and activate on arrival.
               </p>
             )}
           </div>
@@ -138,6 +179,46 @@ export default function CardRequestModal({ accounts, onClose, onSuccess }) {
             onChange={(e) => setForm({ ...form, purpose: e.target.value })}
             placeholder="e.g. Online subscriptions, travel, business expenses"
           />
+
+          {form.type === "physical" && (
+            <div className="space-y-4 pt-4 border-t border-border">
+              <p className="text-sm font-medium text-ink">Shipping address</p>
+              <Input
+                label="Street address"
+                required
+                value={form.street}
+                onChange={(e) => setForm({ ...form, street: e.target.value })}
+                placeholder="123 Main St"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="City"
+                  required
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                />
+                <Input
+                  label="State"
+                  required
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="ZIP code"
+                  required
+                  value={form.zipCode}
+                  onChange={(e) => setForm({ ...form, zipCode: e.target.value })}
+                />
+                <Input
+                  label="Country"
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">

@@ -46,6 +46,21 @@ export function welcomeEmail({ firstName }) {
   );
 }
 
+export function otpEmail({ firstName, code }) {
+  return wrapper(
+    "Verify your email",
+    `<p style="font-size:14px; color:#374151; line-height:1.6;">
+      Hi ${firstName}, use the code below to verify your email and finish creating your Beltrust account.
+    </p>
+    <div style="text-align:center; margin:24px 0;">
+      <span style="display:inline-block; font-family: 'Courier New', monospace; font-size:32px; font-weight:700; letter-spacing:8px; color:#14213D; background:#FAFAF9; padding:16px 24px; border-radius:12px;">${code}</span>
+    </div>
+    <p style="font-size:13px; color:#6B7280; line-height:1.6;">
+      This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.
+    </p>`
+  );
+}
+
 export function transferReviewedEmail({ firstName, amount, status, reason }) {
   const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
   const approved = status === "approved";
@@ -98,6 +113,7 @@ export function cardEmail({ firstName, action, cardType, last4, reason }) {
     requested: "Card request received",
     approved: "Your card request was approved",
     declined: "Your card request was declined",
+    shipped: "Your card has shipped",
     activated: "Your card has been activated",
     frozen: "Your card has been frozen",
     unfrozen: "Your card has been unfrozen",
@@ -109,6 +125,7 @@ export function cardEmail({ firstName, action, cardType, last4, reason }) {
     requested: `Your request for a ${cardType} card has been received and is under review.`,
     approved: `Your ${cardType} card ending in ${last4} has been approved.`,
     declined: `Your request for a ${cardType} card has been declined.`,
+    shipped: `Your ${cardType} card ending in ${last4} has shipped and is on its way to you.`,
     activated: `Your ${cardType} card ending in ${last4} is now active and ready to use.`,
     frozen: `Your ${cardType} card ending in ${last4} has been frozen. It cannot be used until unfrozen.`,
     unfrozen: `Your ${cardType} card ending in ${last4} has been unfrozen and is active again.`,
