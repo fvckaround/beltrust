@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Loader2, CheckCircle2 } from "lucide-react";
+import { Mail, Loader2, CheckCircle2, MessageCircle } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
@@ -125,11 +125,22 @@ export default function ContactForm() {
           </Button>
         </motion.form>
 
-        <div className="mt-8 flex items-center justify-center gap-2 text-sm text-muted">
-          <Mail className="w-4 h-4" />
-          Or email us directly at{" "}
-          <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
-            beltrusts@outlook.com
+        <div className="mt-8 flex flex-col items-center gap-3 text-sm text-muted">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Or email us directly at{" "}
+            <a href="mailto:beltrusts@outlook.com" className="text-navy hover:underline">
+              beltrusts@outlook.com
+            </a>
+          </div>
+          <a
+            href="https://wa.me/447397665462"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-emerald hover:underline"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Chat with us on WhatsApp
           </a>
         </div>
       </div>

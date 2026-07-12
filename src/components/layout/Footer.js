@@ -65,9 +65,19 @@ export default function Footer() {
           <p className="text-xs text-muted">
             © {new Date().getFullYear()} Beltrust Bank. All rights reserved.
           </p>
-          <p className="text-xs text-muted">
-            Member FDIC-eligible partner banks · Equal Housing Lender
-          </p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://wa.me/447397665462"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-muted hover:text-emerald transition-colors"
+            >
+              WhatsApp support
+            </a>
+            <p className="text-xs text-muted">
+              Member FDIC-eligible partner banks · Equal Housing Lender
+            </p>
+          </div>
         </div>
       </div>
     </footer>

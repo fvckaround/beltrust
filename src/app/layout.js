@@ -1,6 +1,7 @@
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import SessionWrapper from "@/components/SessionWrapper";
 import InstallAppButton from "@/components/InstallAppButton";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import StructuredData from "@/components/StructuredData";
 import "./globals.css";
 
@@ -28,7 +29,6 @@ export const metadata = {
   description:
     "Accounts, transfers, cards, loans, and crypto — all in one trusted place.",
   manifest: "/manifest.json",
-  themeColor: "#14213D",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -40,6 +40,10 @@ export const metadata = {
   },
 };
 
+export const viewport = {
+  themeColor: "#14213D",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.variable} ${jakarta.variable} ${mono.variable}`}>
@@ -47,6 +51,7 @@ export default function RootLayout({ children }) {
         <StructuredData />
         <SessionWrapper>{children}</SessionWrapper>
         <InstallAppButton />
+        <WhatsAppButton />
       </body>
     </html>
   );
